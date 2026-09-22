@@ -1,7 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_IMAGE = "mohiiittt/node-devops-app:v1"
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -15,6 +20,29 @@ pipeline {
             }
         }
 
+        stage('Tag Docker Image') {
+            steps {
+                bat '"C:\\Users\\DELL\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" tag node-devops-app:v1 %DOCKER_IMAGE%'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    bat '''
+                        echo %DOCKER_PASSWORD% | "C:\\Users\\DELL\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" login -u %DOCKER_USERNAME% --password-stdin
+                        "C:\\Users\\DELL\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" push %DOCKER_IMAGE%
+                    '''
+                }
+            }
+        }
+
         stage('Check Docker Image') {
             steps {
                 bat '"C:\\Users\\DELL\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe" images node-devops-app'
@@ -24,7 +52,7 @@ pipeline {
 
     post {
         success {
-            echo 'Build Successful!'
+            echo 'Build and Docker Hub Push Successful!'
         }
 
         failure {
